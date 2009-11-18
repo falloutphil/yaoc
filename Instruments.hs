@@ -23,7 +23,7 @@ data ExistentialInstr = forall i. (McInstrument i) => ExistentialInstr i
 
 -- Given an ExistentialInstr and a new single sim run
 -- add the result to the underlying instrument and
--- wrap it back up in to a ExistentialInstr
+-- wrap it back up in to a ExistentialInstr.
 -- This works because b is of type McInstrument and
 -- will have a concrete add method defined.
 -- Note we CANNOT get at b itself because within the
