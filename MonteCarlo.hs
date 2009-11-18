@@ -33,11 +33,11 @@ import Rngs
 -- the main program.
 mc :: MonteCarloUserData-> CalculationParams -> [[Double]] -> Double
 mc userData calcParams rndss = 
-  (existentialResult $ foldl' f existenInst rndss) / fromIntegral (numOfSims userData) 
-    where f           = flip $ existentialAdd . payOff' . expiryValue 
+  (existentialResult $ foldl' f existenAvg rndss) / fromIntegral (numOfSims userData) 
+    where f           = flip $ existentialCombine . payOff' . expiryValue 
           payOff'     = (payOff calcParams) (putCall userData) (strike userData)
           expiryValue = foldl' (evolver calcParams $ userData) (stock userData)
-          existenInst = instrument calcParams
+          existenAvg = averager calcParams
     
         
 discount userData = (*) (exp ( (-(interestRate userData)) * 

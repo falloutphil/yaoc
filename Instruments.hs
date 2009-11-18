@@ -2,8 +2,8 @@
 
 module Instruments
   (
-    CalculationParams(instrument, evolver, payOff),
-    existentialAdd,
+    CalculationParams(averager, evolver, payOff),
+    existentialCombine,
     existentialResult,
     europeanParms    
   ) where
@@ -14,12 +14,12 @@ type EvolveFn = MonteCarloUserData -> Double -> Double -> Double
 
 type PayOffFn = PutCall -> Double -> Double -> Double
 
-class McInstrument a where
-    add    :: Double -> a -> a
+class McAverager a where
+    combine    :: Double -> a -> a
     result :: a -> Double
 
 -- For every McInstrument create a c'tor for ExistentialInstr
-data ExistentialInstr = forall i. (McInstrument i) => ExistentialInstr i
+data ExistentialAverage = forall i. (McAverager i) => ExistentialAverage i
 
 -- Given an ExistentialInstr and a new single sim run
 -- add the result to the underlying instrument and
@@ -30,19 +30,20 @@ data ExistentialInstr = forall i. (McInstrument i) => ExistentialInstr i
 -- scope of this function we cannot know what b is.
 -- But we can call functions in its typeclass which
 -- will then know how to deal with it.
-existentialAdd :: Double -> ExistentialInstr -> ExistentialInstr
-existentialAdd a (ExistentialInstr !b) = ExistentialInstr $ add a b 
+existentialCombine :: Double -> ExistentialAverage -> ExistentialAverage
+existentialCombine a (ExistentialAverage !b) = 
+  ExistentialAverage $ combine a b 
 
-existentialResult :: ExistentialInstr -> Double
-existentialResult (ExistentialInstr a) = result a
+existentialResult :: ExistentialAverage -> Double
+existentialResult (ExistentialAverage a) = result a
  
 -- Must use Existential Qualification to hide true
 -- instrument type inside a wrapper, so that Haskell
 -- can treat it as one single type.
 data CalculationParams = CalculationParams
-  { instrument :: ExistentialInstr,
-    evolver    :: EvolveFn,
-    payOff     :: PayOffFn }
+  { averager :: ExistentialAverage,
+    evolver  :: EvolveFn,
+    payOff   :: PayOffFn }
 
 -- Used for path independent options
 evolveClosedForm :: EvolveFn
@@ -80,11 +81,11 @@ payOffStandard putcall strikeVal stock =
 
 -- ******** EUROPEAN OPTION ********
 
-newtype European = European Double
+newtype Arithmetic = Arithmetic Double
 
-instance McInstrument European where
-    add a  (European b)  = European $ a + b
-    result (European a)  = a 
+instance McAverager Arithmetic where
+    combine a (Arithmetic b)  = Arithmetic $ a + b
+    result (Arithmetic a)  = a 
 
 -- Just to make it obvious!
 europeanEvolver = evolveClosedForm
@@ -94,7 +95,7 @@ europeanPayOff  = payOffStandard
 -- Concrete tuple of calculation details
 -- for European
 europeanParms  = CalculationParams
-  { instrument = ExistentialInstr $ European 0,
+  { averager   = ExistentialAverage $ Arithmetic 0,
     evolver    = europeanEvolver,
     payOff     = europeanPayOff }
 
