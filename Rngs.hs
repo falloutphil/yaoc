@@ -31,3 +31,4 @@ reflect f h (k,base) = reflect newF newH (newK,base)
     newK = k `div` base
     newF = f / fromIntegral base
     newH = h + fromIntegral(k `mod` base) * newF
+

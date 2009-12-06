@@ -1,16 +1,22 @@
+{-# LANGUAGE ExistentialQuantification #-}
 
 module Data
   (
     MonteCarloUserData(..),
-    PutCall(..)
+    PutCall(..),
+    Instrument(..)
   ) where
 
+
+class Instrument a where
+    evolve :: MonteCarloUserData -> a -> Double -> a
+    payOff :: PutCall -> Double -> a -> Double
 
 -- Holds contract and market data
 -- specific to each individual instrument
 -- and specified by the user.
-data MonteCarloUserData = MonteCarloUserData
-  { stock  :: Double,
+data MonteCarloUserData = forall i. (Instrument i) => MonteCarloUserData
+  { stock  :: i,
     strike :: Double,
     putCall :: PutCall,
     volatility :: Double,

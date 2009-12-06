@@ -31,13 +31,15 @@ import Rngs
 -- add and result functions in the underlying typeclass.
 -- This allows us to hide the polymorphism well away from
 -- the main program.
-mc :: MonteCarloUserData-> CalculationParams -> [[Double]] -> Double
-mc userData calcParams rndss = 
-  (existentialResult $ foldl' f existenAvg rndss) / fromIntegral (numOfSims userData) 
+mc :: Instrument a => a -> MonteCarloUserData -> CalculationParams -> [[Double]] -> Double
+mc instr userData calcParams rndss = 
+  existentialResult (foldl' f existenAvg rndss) $ numOfSims userData
     where f           = flip $ existentialCombine . payOff' . expiryValue 
-          payOff'     = (payOff calcParams) (putCall userData) (strike userData)
-          expiryValue = foldl' (evolver calcParams $ userData) (stock userData)
-          existenAvg = averager calcParams
+          --payOff'     = (payOff calcParams) (putCall userData) (strike userData)
+          payOff'     = payOff (putCall userData) (strike userData)
+          --expiryValue = foldl' (evolver calcParams $ userData) (stock userData)
+          expiryValue = foldl' (evolve userData) instr
+          existenAvg  = averager calcParams
     
         
 discount userData = (*) (exp ( (-(interestRate userData)) * 
@@ -45,16 +47,16 @@ discount userData = (*) (exp ( (-(interestRate userData)) *
 
 main :: IO()
 main = do
-  let userData = MonteCarloUserData { stock        = 100,
+  let userData = MonteCarloUserData { stock        = European 100,
                                       strike       = 100,
                                       putCall      = Call,
                                       volatility   = 0.2,
                                       expiry       = 1,
                                       interestRate = 0.05,
                                       timeSteps    = 1,
-                                      numOfSims    = 1000000 }
+                                      numOfSims    = 100000 }
   
   let rngss = take (numOfSims userData) $ haltonNorm (1,timeSteps userData)
-    in print $ discount userData $ mc userData europeanParms rngss
+    in print $ discount userData $ mc (European 100) userData europeanParms rngss
 
 
