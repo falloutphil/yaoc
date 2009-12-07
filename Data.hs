@@ -13,7 +13,7 @@ module Data
 
 class Instrument a where
     evolve :: MonteCarloUserData -> a -> Double -> a
-    payOff :: PutCall -> Double -> a -> Double
+    payOff :: MonteCarloUserData -> a -> Double
 
 data ExistentialInstrument = forall i. (Instrument i) => ExistentialInstrument i
 

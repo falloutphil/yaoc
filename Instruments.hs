@@ -8,6 +8,8 @@ module Instruments
     existentialPayOff,
     European(..),
     Lookback(..),
+    Binary(..),
+    Asian(..),
     Arithmetic(..)
   ) where
 
@@ -34,18 +36,12 @@ existentialEvolve :: MonteCarloUserData -> ExistentialInstrument -> Double -> Ex
 existentialEvolve ud (ExistentialInstrument !a) norm =
     ExistentialInstrument $ evolve ud a norm
 
-existentialPayOff :: PutCall -> Double -> ExistentialInstrument -> Double
-existentialPayOff putCall strike (ExistentialInstrument !a) =
-        payOff putCall strike a
+existentialPayOff :: MonteCarloUserData -> ExistentialInstrument -> Double
+existentialPayOff ud (ExistentialInstrument !a) = payOff ud a
 
 existentialResult :: ExistentialAverage -> Int -> Double
 existentialResult (ExistentialAverage a) = result a 
  
--- Must use Existential Qualification to hide true
--- instrument type inside a wrapper, so that Haskell
--- can treat it as one single type.
-data CalculationParams = CalculationParams
-  { averager :: ExistentialAverage } 
 
 -- Used for path independent options
 evolveClosedForm :: EvolveFn
@@ -101,8 +97,18 @@ newtype European = European Double
 instance Instrument European where
     evolve ud (European stock) normal =
         European $ evolveClosedForm ud stock normal
-    payOff putCall strike (European stock) =
-        payOffStandard putCall strike stock
+    payOff ud (European stock) =
+        payOffStandard (putCall ud) (strike ud) stock
+
+-- ******** BINARY OPTION ********
+
+newtype Binary = Binary Double
+
+instance Instrument Binary where
+    evolve ud (Binary stock) normal =
+        Binary $ evolveClosedForm ud stock normal
+    payOff ud (Binary stock) =
+        if payOffStandard (putCall ud) (strike ud) stock > 0 then 1 else 0
 
 -- ******** LOOKBACK OPTION ********
 
@@ -112,5 +118,17 @@ instance Instrument Lookback where
     evolve ud (Lookback (maxV,stock)) normal =
         let newStock = evolveStandardForm ud stock normal
            in Lookback $ (max maxV newStock, newStock)
-    payOff putCall strike (Lookback (maxV,_)) =
-        payOffStandard putCall strike maxV
+    payOff ud (Lookback (maxV,_)) =
+        payOffStandard (putCall ud) (strike ud) maxV
+
+
+-- ******** ASIAN OPTION ********
+
+newtype Asian = Asian (Double,Double)
+
+instance Instrument Asian where
+    evolve ud (Asian (total,stock)) normal =
+        let newStock = evolveStandardForm ud stock normal
+           in Asian $ (total+newStock, newStock)
+    payOff ud (Asian (total,_)) =
+        payOffStandard (putCall ud) (strike ud) (total / (fromIntegral $ timeSteps ud))

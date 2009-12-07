@@ -35,7 +35,7 @@ mc :: MonteCarloUserData -> [[Double]] -> Double
 mc userData rndss = 
   existentialResult (foldl' f existenAvg rndss) $ numOfSims userData
     where f           = flip $ existentialCombine . payOff' . expiryValue 
-          payOff'     = existentialPayOff (putCall userData) (strike userData)
+          payOff'     = existentialPayOff userData
           expiryValue = foldl' (existentialEvolve userData) (stock userData)
           existenAvg  = averager userData
     
@@ -45,14 +45,14 @@ discount userData = (*) (exp ( (-(interestRate userData)) *
 
 main :: IO()
 main = do
-  let userData = MonteCarloUserData { stock        = ExistentialInstrument $ Lookback (0,100),
+  let userData = MonteCarloUserData { stock        = ExistentialInstrument $ European 100,
                                       averager     = ExistentialAverage $ Arithmetic 0,
                                       strike       = 100,
                                       putCall      = Call,
                                       volatility   = 0.2,
                                       expiry       = 1,
                                       interestRate = 0.05,
-                                      timeSteps    = 10,
+                                      timeSteps    = 1,
                                       numOfSims    = 100000 }
   
   let rngss = take (numOfSims userData) $ haltonNorm (1,timeSteps userData)
