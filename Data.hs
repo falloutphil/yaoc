@@ -4,7 +4,10 @@ module Data
   (
     MonteCarloUserData(..),
     PutCall(..),
-    Instrument(..)
+    ExistentialInstrument(..),
+    Instrument(..),
+    ExistentialAverage(..),
+    McAverager(..)
   ) where
 
 
@@ -12,11 +15,21 @@ class Instrument a where
     evolve :: MonteCarloUserData -> a -> Double -> a
     payOff :: PutCall -> Double -> a -> Double
 
+data ExistentialInstrument = forall i. (Instrument i) => ExistentialInstrument i
+
+class McAverager a where
+    combine :: Double -> a -> a
+    result  :: a -> Int ->  Double
+
+-- For every McInstrument create a c'tor for ExistentialInstr
+data ExistentialAverage = forall i. (McAverager i) => ExistentialAverage i
+
 -- Holds contract and market data
 -- specific to each individual instrument
 -- and specified by the user.
-data MonteCarloUserData = forall i. (Instrument i) => MonteCarloUserData
-  { stock  :: i,
+data MonteCarloUserData = MonteCarloUserData
+  { stock  :: ExistentialInstrument,
+    averager :: ExistentialAverage,
     strike :: Double,
     putCall :: PutCall,
     volatility :: Double,

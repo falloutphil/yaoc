@@ -2,26 +2,20 @@
 
 module Instruments
   (
-    CalculationParams(averager), --, evolver, payOff),
     existentialCombine,
     existentialResult,
-    europeanParms,
-    European(..)
+    existentialEvolve,
+    existentialPayOff,
+    European(..),
+    Lookback(..),
+    Arithmetic(..)
   ) where
 
 import Data
 
 type EvolveFn = MonteCarloUserData -> Double -> Double -> Double
-
 type PayOffFn = PutCall -> Double -> Double -> Double
 
-class McAverager a where
-    combine :: Double -> a -> a
-    result  :: a -> Int ->  Double
-
-
--- For every McInstrument create a c'tor for ExistentialInstr
-data ExistentialAverage = forall i. (McAverager i) => ExistentialAverage i
 
 -- Given an ExistentiaAverage and a new single sim run
 -- combine the result to the running total and
@@ -36,6 +30,14 @@ existentialCombine :: Double -> ExistentialAverage -> ExistentialAverage
 existentialCombine a (ExistentialAverage !b) = 
   ExistentialAverage $ combine a b 
 
+existentialEvolve :: MonteCarloUserData -> ExistentialInstrument -> Double -> ExistentialInstrument
+existentialEvolve ud (ExistentialInstrument !a) norm =
+    ExistentialInstrument $ evolve ud a norm
+
+existentialPayOff :: PutCall -> Double -> ExistentialInstrument -> Double
+existentialPayOff putCall strike (ExistentialInstrument !a) =
+        payOff putCall strike a
+
 existentialResult :: ExistentialAverage -> Int -> Double
 existentialResult (ExistentialAverage a) = result a 
  
@@ -43,9 +45,7 @@ existentialResult (ExistentialAverage a) = result a
 -- instrument type inside a wrapper, so that Haskell
 -- can treat it as one single type.
 data CalculationParams = CalculationParams
-  { averager :: ExistentialAverage }
-    --evolver  :: EvolveFn,
-    --payOff   :: PayOffFn }
+  { averager :: ExistentialAverage } 
 
 -- Used for path independent options
 evolveClosedForm :: EvolveFn
@@ -77,11 +77,7 @@ payOffStandard :: PayOffFn
 payOffStandard putcall strikeVal stock =
   max 0 $ (putCallMult putcall)*(stock - strikeVal) 
 
-
--- Now for the concrete options using the above
--- abstract framework.
-
--- ******** EUROPEAN OPTION ********
+-- Averagers used to find expected payoff
 
 newtype Arithmetic = Arithmetic Double
 newtype Geometric  = Geometric  Double
@@ -94,9 +90,11 @@ instance McAverager Geometric where
     combine a (Geometric b)  = if a == 0 then Geometric b else Geometric $ a * b  
     result (Geometric a) b  = a ** (1/fromIntegral b)
 
--- Just to make it obvious!
-europeanEvolver = evolveClosedForm
-europeanPayOff  = payOffStandard
+
+-- Now for the concrete options using the above
+-- abstract framework.
+
+-- ******** EUROPEAN OPTION ********
 
 newtype European = European Double
 
@@ -106,36 +104,13 @@ instance Instrument European where
     payOff putCall strike (European stock) =
         payOffStandard putCall strike stock
 
--- Concrete tuple of calculation details
--- for European
-europeanParms  = CalculationParams
-  { averager   = ExistentialAverage $ Arithmetic 0 }
-    --evolver    = europeanEvolver,
-    --payOff     = europeanPayOff }
-
-
-
 -- ******** LOOKBACK OPTION ********
 
-{-
-newtype Lookback = Lookback Double
- 
-instance McInstrument Lookback where
-    add a  (Lookback b) = Lookback $ a + b
-    result (Lookback a) = a 
+newtype Lookback = Lookback (Double,Double)
 
-lookbackEvolver ud (maxStock,currStock) normal =
-  let evolveStandardForm ud currStock normal = newValue
-    in if newValue > maxStock then (newValue,newValue) else (maxStock,newValue)
-
-lookbackPayOff putcall strikeVal (maxStock,_) =
-  payOffStrandard putcall strikeVal maxStock
-
-payOffLookback 
--- Concrete tuple of calculation details
--- for European
-lookbackParms  = CalculationParams
-  { instrument = ExistentialInstr $ Lookback (0,0),
-    evolver    = lookbackEvolver,
-    payOff     = lookbackPayOff }
--}
+instance Instrument Lookback where
+    evolve ud (Lookback (maxV,stock)) normal =
+        let newStock = evolveStandardForm ud stock normal
+           in Lookback $ (max maxV newStock, newStock)
+    payOff putCall strike (Lookback (maxV,_)) =
+        payOffStandard putCall strike maxV
