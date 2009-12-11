@@ -5,6 +5,7 @@ import Data
 import Instruments
 import Rngs
 
+import Control.Parallel.Strategies
 
 -- f has to be of the form (McInstrument->Double->McInstrument)
 -- to use in fold.
@@ -22,6 +23,10 @@ import Rngs
 -- f = \accumulator = (add accumulator) . payOff' expiryValue
 -- Obviously you'll have to swap the defn of add too!
 
+
+pfoldl :: (a -> b -> a) -> a -> [b] -> a
+pfoldl f acc xs = foldl f acc (xs `using` parList rwhnf)
+
 -- Note now abstract types are used and f is of type
 -- ExistentialInstr -> Double -> ExistentialInstr
 -- The above still applies, we are just initialising
@@ -33,7 +38,7 @@ import Rngs
 -- the main program.
 mc :: MonteCarloUserData -> [[Double]] -> Double
 mc userData rndss = 
-  existentialResult (foldl' f existenAvg rndss) $ numOfSims userData
+  existentialResult (pfoldl f existenAvg rndss) $ numOfSims userData
     where f           = flip $ existentialCombine . payOff' . expiryValue 
           payOff'     = existentialPayOff userData
           expiryValue = foldl' (existentialEvolve userData) (stock userData)
