@@ -2,35 +2,20 @@
 
 module Instruments
   (
-    existentialCombine,
-    existentialResult,
     existentialEvolve,
     existentialPayOff,
     European(..),
     Lookback(..),
     Binary(..),
-    Asian(..),
-    Arithmetic(..)
+    Asian(..)
   ) where
 
 import Data
+import Control.Parallel.Strategies
 
 type EvolveFn = MonteCarloUserData -> Double -> Double -> Double
 type PayOffFn = PutCall -> Double -> Double -> Double
 
-
--- Given an ExistentiaAverage and a new single sim run
--- combine the result to the running total and
--- wrap it back up in to a ExistentialAverage.
--- This works because b is of type McAverage and
--- will have a concrete combine method defined.
--- Note we CANNOT get at b itself because within the
--- scope of this function we cannot know what b is.
--- But we can call functions in its typeclass which
--- will then know how to deal with it.
-existentialCombine :: Double -> ExistentialAverage -> ExistentialAverage
-existentialCombine a (ExistentialAverage !b) = 
-  ExistentialAverage $ combine a b 
 
 existentialEvolve :: MonteCarloUserData -> ExistentialInstrument -> Double -> ExistentialInstrument
 existentialEvolve ud (ExistentialInstrument !a) norm =
@@ -39,9 +24,6 @@ existentialEvolve ud (ExistentialInstrument !a) norm =
 existentialPayOff :: MonteCarloUserData -> ExistentialInstrument -> Double
 existentialPayOff ud (ExistentialInstrument !a) = payOff ud a
 
-existentialResult :: ExistentialAverage -> Int -> Double
-existentialResult (ExistentialAverage a) = result a 
- 
 
 -- Used for path independent options
 evolveClosedForm :: EvolveFn
@@ -72,19 +54,6 @@ putCallMult Put = -1
 payOffStandard :: PayOffFn
 payOffStandard putcall strikeVal stock =
   max 0 $ (putCallMult putcall)*(stock - strikeVal) 
-
--- Averagers used to find expected payoff
-
-newtype Arithmetic = Arithmetic Double
-newtype Geometric  = Geometric  Double
-
-instance McAverager Arithmetic where
-    combine a (Arithmetic b)  = Arithmetic $ a + b
-    result (Arithmetic a) b  = a / fromIntegral b 
-
-instance McAverager Geometric where
-    combine a (Geometric b)  = if a == 0 then Geometric b else Geometric $ a * b  
-    result (Geometric a) b  = a ** (1/fromIntegral b)
 
 
 -- Now for the concrete options using the above
