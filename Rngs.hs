@@ -17,12 +17,15 @@ primes = sieve [2..]
 -- Thus hold the seed constant across our
 -- number of dims and iterate our prime list
 -- to create a pair to map onto.
-haltonNorm :: (Int,Int) -> [[Double]]
+haltonNorm :: (Int,Int) -> [[[Double]]]
 haltonNorm (initialState,totalDims) =
   let normalise = invnorm . (reflect 1 0)
     in
-      [ map normalise $ zip (replicate totalDims seed) primes
-        | seed <- [initialState..]  ]
+      [ [ map normalise $ zip (replicate totalDims seed) primes
+          | seed <- [initialState..5000000]  ], 
+        [ map normalise $ zip (replicate totalDims seed) primes
+          | seed <- [initialState+5000000..10000000]  ] 
+      ]
    
 reflect :: Double -> Double -> (Int,Int) -> Double
 reflect f h (0,base) = h

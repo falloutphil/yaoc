@@ -1,49 +1,40 @@
 
 import Data.List
 
+import Parallel
 import Data
 import Instruments
 import Rngs
 
-import Control.Parallel.Strategies (rwhnf,parMap)
-import Data.List.Split (chunk)
-import GHC.Conc (numCapabilities)
+import Control.Parallel.Strategies 
 
--- Prepare to share work to be 
--- done across available cores
-chunkOnCpu :: [a] -> [[a]]
-chunkOnCpu xs = chunk (length xs `div` numCapabilities) xs
- 
--- Spark a fold of each chunk and
--- combine the results. Only works because
--- for associative folds.
-foldChunks :: ([a] -> a) -> (a -> b -> a) -> a -> [[b]] -> a
-foldChunks combineFunc foldFunc acc = 
-  combineFunc . (parMap rwhnf $ foldl' foldFunc acc)
-
-
-mc :: MonteCarloUserData -> [[Double]] -> Double
+-- chunking on the rndss is forcing valuation on them???
+-- the list of rngs remains an 'idea' rather than an implementation
+-- when we don't iterate over it.... perhaps?
+-- YES - don't manipulate the rndss list, create two from scratch! BINGO!
+mc :: MonteCarloUserData -> [[[Double]]] -> Double
 mc userData rndss = 
-  (foldChunks sum f 0 $ chunkOnCpu rndss) / (fromIntegral $ numOfSims userData)
+  ((psum rwhnf) $ foldChunks f 0 rndss) / (fromIntegral $ numOfSims userData)
+  --(foldl f 0 rndss) / (fromIntegral $ numOfSims userData)
     where f           = flip $ (+) . payOff' . expiryValue 
           payOff'     = existentialPayOff userData
-          expiryValue = foldl' (existentialEvolve userData) (stock userData)
+          expiryValue = foldl (existentialEvolve userData) (stock userData)
     
 discount userData = (*) (exp ( (-(interestRate userData)) * 
                              (expiry userData) ))  
 
 main :: IO()
 main = do
-  let userData = MonteCarloUserData { stock        = ExistentialInstrument $ Lookback (0,100),
+  let userData = MonteCarloUserData { stock        = ExistentialInstrument $ European 100,
                                       strike       = 100,
                                       putCall      = Call,
                                       volatility   = 0.2,
                                       expiry       = 1,
                                       interestRate = 0.05,
-                                      timeSteps    = 10,
-                                      numOfSims    = 1000000 }
+                                      timeSteps    = 1,
+                                      numOfSims    = 10000000 }
   
-  let rngss = take (numOfSims userData) $ haltonNorm (1,timeSteps userData)
+  let rngss = haltonNorm (1,timeSteps userData)
     in print $ discount userData $ mc userData rngss
 
 
