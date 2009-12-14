@@ -1,27 +1,14 @@
 module Parallel
   (
-    chunkOnCpu,
     foldChunks,
     psum
   ) where
 
 
-import Control.Parallel.Strategies 
---(rwhnf,r0,parMap,using,parList)
-import Data.List.Split (chunk)
-import GHC.Conc (numCapabilities)
-import Data.List (foldl')
+import Control.Parallel.Strategies (rwhnf,using,parList)
 
-
--- Prepare to share work to be 
--- done across available cores
-chunkOnCpu :: [a] -> [[a]]
-chunkOnCpu xs = chunk (length xs `div` numCapabilities) xs
---chunkOnCpu xs =  take (length xs `div` numCapabilities) xs : 
---                 drop (length xs `div` numCapabilities) xs : []
-
-psum :: Strategy Double -> [Double] -> Double
-psum strat xs = sum (xs `using` parList strat) 
+psum :: [Double] -> Double
+psum xs = sum (xs `using` parList rwhnf) 
 
 -- Spark a fold of each chunk and
 -- combine the results. Only works because
