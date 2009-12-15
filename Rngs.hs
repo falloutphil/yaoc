@@ -46,11 +46,16 @@ reflect f h (k,base) = reflect newF newH (newK,base)
 -- generating function.  If at a later date we tried to chunkify
 -- the output from haltonNorm we would have to traverse each element
 -- and thus each element would be brought into existance by the generating
--- function.  This produces on almighty thunk.  So we create the contruct
+-- function.  This produces on almighty thunk.  So we create the construct
 -- here and then only pop items off each list as we need them.
 randomChunks :: MonteCarloUserData -> Int -> [[[Double]]] 
 randomChunks ud initialState = 
-  let split  = numOfSims ud `div` numCapabilities
-      splits = take numCapabilities $ iterate (+split) initialState
-    in [ take split $ haltonNorm nextState $ timeSteps ud | nextState <- splits ]
-
+  let sims     = numOfSims ud
+      ts       = timeSteps ud
+      split    = sims `div` numCapabilities
+      leftover = sims `mod` numCapabilities
+      splits   = take numCapabilities $ iterate (+split) (initialState+leftover)
+      divRnds  = [ take split $ haltonNorm nextState ts | nextState <- splits ]
+    in if leftover == 0 then divRnds 
+       else divRnds ++ [ take leftover $ haltonNorm initialState ts ]
+ 

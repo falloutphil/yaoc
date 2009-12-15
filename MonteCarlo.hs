@@ -4,10 +4,9 @@ import Data
 import Instruments
 import Rngs
 
-
 mc :: MonteCarloUserData -> [[[Double]]] -> Double
-mc userData rndss = 
-  (psum $ foldChunks f 0 rndss) / (fromIntegral $ numOfSims userData)
+mc userData rndsss = 
+  (parSum $ foldChunks f 0 rndsss) / (fromIntegral $ numOfSims userData)
     where f           = flip $ (+) . payOff' . expiryValue 
           payOff'     = existentialPayOff userData
           expiryValue = foldl (existentialEvolve userData) (stock userData)
@@ -26,7 +25,7 @@ main = do
                                       timeSteps    = 1,
                                       numOfSims    = 10000000 }
   
-  let rngss = randomChunks userData 1
-    in print $ discount userData $ mc userData rngss
+  let rngsss = randomChunks userData 20 -- discard first 20
+    in print $ discount userData $ mc userData rngsss
 
 
