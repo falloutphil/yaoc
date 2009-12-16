@@ -16,16 +16,16 @@ discount userData = (*) (exp ( (-(interestRate userData)) *
 
 main :: IO()
 main = do
-  let userData = MonteCarloUserData { stock        = ExistentialInstrument $ European 100,
+  let userData = MonteCarloUserData { stock        = ExistentialInstrument $ Asian (100,100),
                                       strike       = 100,
                                       putCall      = Call,
                                       volatility   = 0.2,
                                       expiry       = 1,
                                       interestRate = 0.05,
-                                      timeSteps    = 1,
-                                      numOfSims    = 10000000 }
+                                      timeSteps    = 500,
+                                      numOfSims    = 100000 }
   
-  let rngsss = randomChunks userData 20 -- discard first 20
+  let rngsss = randomChunks ranq1Norm userData 20 -- discard first 20
     in print $ discount userData $ mc userData rngsss
 
 
