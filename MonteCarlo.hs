@@ -1,6 +1,7 @@
 -- Gnuplot imports
 import qualified Graphics.Gnuplot.Advanced as Plot
 import qualified Graphics.Gnuplot.Terminal.X11 as X11
+import qualified Graphics.Gnuplot.Terminal.PNG as PNG
 import qualified Graphics.Gnuplot.Frame as Frame
 import qualified Graphics.Gnuplot.Frame.Option as Opt
 import qualified Graphics.Gnuplot.Frame.OptionSet as Opts
@@ -63,6 +64,10 @@ euro3d =
    in  Frame.cons
           (Opts.xRange3d (0,5) $
            Opts.yRange3d (50,150) $
+           Opts.title "Euro Option Stuck @ 100" $ 
+           Opts.xLabel "Time to Expiry" $
+           Opts.yLabel "Stock" $
+           Opts.zLabel "     Value" $
            defltOpts)  $
        Plot3D.surface
           meshExpiry meshStock european
@@ -73,4 +78,5 @@ euro3d =
 main :: IO()
 main = do 
   Plot.plot X11.cons euro3d
+  Plot.plot (PNG.cons "euro.png") euro3d
   print "end"
